@@ -1,0 +1,38 @@
+# Base image olarak Node.js ve Alpine Linux kullanın
+ARG ALPINE_VERSION=22-alpine3.19
+FROM node:${ALPINE_VERSION}
+LABEL Maintainer="Esat Köseoglu <e.koseoglu@logirit.com>"
+LABEL Description="Lightweight container with Node.js and Alpine Linux."
+
+# Supervisor ve diğer gerekli paketleri yükleyin
+RUN apk add --no-cache supervisor
+
+# Supervisor konfigürasyon dosyasını kopyalayın
+COPY --chown=root docker/config/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Entrypoint script
+COPY docker/config/entrypoint.sh /usr/local/bin/entrypoint.sh
+
+# Make the entrypoint script executable
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
+# Çalışma dizini oluşturun ve sahipliğini değiştirin
+RUN mkdir /app
+RUN mkdir /.cache
+RUN mkdir /app/.yarnrc
+RUN chown -R root:root /app /.cache /tmp /run /app/.yarnrc
+
+# Kullanıcıyı değiştirin
+USER root
+
+# Çalışma dizinini belirleyin
+WORKDIR /app
+
+# Uygulama dosyalarını kopyalayın
+COPY --chown=root /package.json ./
+
+# Portu açın
+EXPOSE 5173
+
+# Supervisor ile uygulamayı başlatın
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
